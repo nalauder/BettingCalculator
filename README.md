@@ -6,6 +6,6 @@ Note:
 
 Program usage:
     ThreadedBetting.exe <betting limit> <odd 1> <odd 2> ...
-        ThreadedBetting.exe 10000 1.5 2 17
+        i.e - ThreadedBetting.exe 10000 1.5 2 17
     Any number of odds can be added
     Odds much be no more accurate than 2dp
