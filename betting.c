@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#define PRINT 0
-#define SAVE_RESULTS 0
+#define PRINT 1
+#define SAVE_RESULTS 1
 #define NUMBER_OF_THREADS 10
 
 int betLimit;
@@ -128,17 +128,10 @@ int main(int argc, char *argv[]) {
 
         // Odds stored is in array 1st element is integer, second element is decimal
         odds[i] = (int*) calloc (2, sizeof(int));
-        sscanf(argv[i+2], "%d.%d", &odds[i][0], &odds[i][1]);
+        int decimal1 = 0, decimal2 = 0;
+        sscanf(argv[i+2], "%d.%1d%1d", &odds[i][0], &decimal1, &decimal2);
+        odds[i][1] = decimal1*10 + decimal2;
 
-        //Ensures numbers only have 2dp
-        if (odds[i][1] < 10) {
-            odds[i][1] *= 10;
-        } else if (odds[i][1] >= 100) {
-            printf( "Program usage:\r\n\t%s <betting limit> <odd 1> <odd 2> ...\r\n\t"
-                    "Any number of odds can be added\r\n\t"
-                    "Odds much be no more accurate than 2dp\r\n", argv[0]);
-            exit(1);
-        }
     }
 
     clock_t start = clock();
@@ -159,7 +152,7 @@ int main(int argc, char *argv[]) {
         pthread_create(&threads[i].thread, NULL, threadHandler, (void *)&threads[i]);
     }
     for (int i = 0; i < NUMBER_OF_THREADS; i++) {
-        thread_join(threads[i].thread, NULL);
+        pthread_join(threads[i].thread, NULL);
     }
     clock_t finish = clock();
 
