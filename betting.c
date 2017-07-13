@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
         pthread_create(&threads[i].thread, NULL, threadHandler, (void *)&threads[i]);
     }
     for (int i = 0; i < NUMBER_OF_THREADS; i++) {
-        thread_join(threads[i].thread, NULL);
+        pthread_join(threads[i].thread, NULL);
     }
     clock_t finish = clock();
 
