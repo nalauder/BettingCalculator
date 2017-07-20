@@ -2,10 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <stdint.h>
 
-#define PRINT 1
+#define PRINT 0
 #define SAVE_RESULTS 1
-#define NUMBER_OF_THREADS 10
+#define NUMBER_OF_THREADS 1
 
 int betLimit;
 
@@ -17,13 +18,31 @@ typedef struct {
     pthread_t thread;
     int id;         //Thread id
     int *bets;        //Bet amounts currently being checked
-    int validNo;    //Number of valid results
+    size_t validNo;    //Number of valid results
 #if SAVE_RESULTS
     int **valid;    // Array of array to store valid results
-    int validSize;     // Size of array holding valid results
+    size_t validSize;     // Size of array holding valid results
 #endif
 }  threadData;
 
+#if SAVE_RESULTS
+void ensureCapacity(threadData *data) {
+    if (data->validNo == data->validSize) {
+        data->valid = realloc(data->valid, (data->validSize *= 1.2) * sizeof(int*));
+        if (data->valid == NULL) {
+            puts("Out of memory!");
+            exit(1);
+        }
+        for (int l = data->validNo; l < data->validSize; l++) {
+            data->valid[l] = (int*) malloc(sizeof(int) * noOdds);
+            if (data->valid[l] == NULL) {
+                puts("Out of memory!");
+                exit(1);
+            }
+        }
+    }
+}
+#endif
 
  /*
   * Recursive function searching all combinations
@@ -43,12 +62,11 @@ typedef struct {
   */
 void playOption(threadData *data, int startNo, int endNo, int optionsNo, int currBet) {
 
-    for(int i = startNo; i < endNo-currBet; i++) {
+    for(int i = startNo; i <= endNo-currBet; i++) {
         data->bets[optionsNo] = i;
         int totalbet = currBet + i;
 
-        // If this recursion is now checking the last option
-        if (optionsNo >= noOdds-1) {
+        if (optionsNo >= noOdds-1) { // If this recursion is now checking the last option
 
             char profit = 1;
             for (int j = 0; j < noOdds; j++) {
@@ -62,7 +80,6 @@ void playOption(threadData *data, int startNo, int endNo, int optionsNo, int cur
 
                     // Skips to the next level where we would break even
                     i -= 1/(odds[j][0]/diff + (odds[j][1]/100.0)/diff);
-
                 }
             }
 
@@ -72,28 +89,16 @@ void playOption(threadData *data, int startNo, int endNo, int optionsNo, int cur
                 // Adds options to the valid choices array
                 for (int k = 0; k < noOdds; k++)
                     data->valid[data->validNo-1][k] = data->bets[k];
-
                 // Ensures array does not run out of memory
-                if (data->validNo == data->validSize) {
-                    data->valid = realloc(data->valid, (data->validSize *= 1.2) * sizeof(int*));
-                    if (data->valid == NULL) {
-                        puts("Out of memory!");
-                        exit(1);
-                    }
-                    for (int l = data->validNo; l < data->validSize; l++) {
-                        data->valid[l] = (int*) malloc(sizeof(int) * noOdds);
-                        if (data->valid[l] == NULL) {
-                            puts("Out of memory!");
-                            exit(1);
-                        }
-                    }
-                }
+                ensureCapacity(data);
 #endif
             }
         }
-        else
+
+        if (optionsNo < noOdds-1) {
             //Runs the next option recursively
             playOption(data, 1, betLimit, optionsNo+1, totalbet);
+        }
     }
 
 }
@@ -105,7 +110,7 @@ void playOption(threadData *data, int startNo, int endNo, int optionsNo, int cur
   */
 void *threadHandler(void *argv) {
     threadData *data = argv;
-    playOption(data, (betLimit/NUMBER_OF_THREADS)*(data->id), (betLimit/NUMBER_OF_THREADS)*((data->id)+1), 0, 0);
+    playOption(data, (betLimit/NUMBER_OF_THREADS)*(data->id)+1, (betLimit/NUMBER_OF_THREADS)*((data->id)+1), 0, 0);
     pthread_exit(NULL);
     return NULL;
 }
@@ -171,7 +176,7 @@ int main(int argc, char *argv[]) {
 
     printf("time = %f\r\n", (double)(finish - start)/CLOCKS_PER_SEC);
 
-    int total = 0;
+    size_t total = 0;
     for (int i = 0; i < NUMBER_OF_THREADS; total += threads[i++].validNo);
     printf("Valid solutions: %d\r\n", total);
 
